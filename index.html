@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LookFar for Garmin</title>
+<meta name="description" content="LookFar is a free Connect IQ app for Garmin watches. During your work hours it buzzes you to look away from the screen for a short eye-rest break.">
+<link rel="icon" href="logo.webp">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single column that reads like looking out a window — a wide horizon band on top, then quiet sections on a fog ground; watch UI in mono green */
+:root{
+  --fog:#e9eef0; --paper:#f6f8f8; --ink:#14232b; --muted:#536770; --line:#c9d4d8;
+  --horizon:#2f6f8f; --signal:#2fae7c; --miss:#d9a441; --cancel:#9aa8ae; --cell:#dde5e8;
+  --bezel:#26323a; --screen:#071012; --screen-ink:#e7f3ee;
+  --display:"Familjen Grotesk",system-ui,sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --fog:#0f171b; --paper:#141e23; --ink:#e3ecef; --muted:#93a6ad; --line:#2a3a41;
+  --horizon:#6fb3d2; --signal:#4fd09b; --miss:#e0b45a; --cancel:#62737a; --cell:#1e2b31;
+  --bezel:#3a4952; --screen:#050a0b; --screen-ink:#e7f3ee; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --fog:#0f171b; --paper:#141e23; --ink:#e3ecef; --muted:#93a6ad; --line:#2a3a41;
+  --horizon:#6fb3d2; --signal:#4fd09b; --miss:#e0b45a; --cancel:#62737a; --cell:#1e2b31;
+  --bezel:#3a4952; --screen:#050a0b; --screen-ink:#e7f3ee; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--fog);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);line-height:1.1;text-wrap:balance;margin:0}
+h2{font-size:clamp(1.6rem,3.4vw,2.2rem);font-weight:700}
+h3{font-size:1.15rem;font-weight:600}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--horizon)}
+a{color:var(--horizon)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--signal);outline-offset:3px;border-radius:6px}
+section{padding-block:72px}
+section+section{border-top:1px solid var(--line)}
+
+/* nav */
+nav{display:flex;justify-content:space-between;align-items:center;padding-block:20px}
+.logo{font-family:var(--display);font-weight:700;font-size:1.25rem;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.logo img{width:34px;height:34px;border-radius:9px;display:block}
+nav .links{display:flex;gap:20px;font-size:.95rem}
+nav .links a{color:var(--muted);text-decoration:none}
+@media (max-width:520px){nav .links a:not(.keep){display:none}}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding-block:40px 64px}
+.hero h1{font-size:clamp(2.3rem,6vw,4.1rem);font-weight:700;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--horizon)}
+.hero p{font-size:1.15rem;color:var(--muted);max-width:44ch;margin:20px 0 28px}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{font-family:var(--display);font-weight:600;font-size:1rem;border-radius:999px;padding:14px 22px;border:2px solid var(--ink);background:var(--ink);color:var(--fog);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn.ghost{background:transparent;color:var(--ink)}
+.note{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+@media (max-width:780px){.hero{grid-template-columns:1fr}.hero .stage{order:-1}}
+
+/* watch */
+.stage{position:relative;width:min(300px,100%);aspect-ratio:1;margin-inline:auto;display:grid;place-items:center}
+.ring{position:absolute;inset:18%;border-radius:50%;border:2px solid var(--signal);opacity:0;animation:pulse 3s ease-out infinite}
+.ring:nth-child(2){animation-delay:.18s}.ring:nth-child(3){animation-delay:.36s}
+@keyframes pulse{0%{transform:scale(1);opacity:.75}70%{opacity:0}100%{transform:scale(1.5);opacity:0}}
+.watch{position:relative;width:64%;aspect-ratio:1;border-radius:50%;background:var(--bezel);display:grid;place-items:center;box-shadow:0 18px 40px rgb(10 30 40 / .25);z-index:1}
+.watch::before,.watch::after{content:"";position:absolute;width:6%;height:12%;background:var(--bezel);right:-3%;border-radius:3px}
+.watch::before{top:24%}.watch::after{bottom:24%}
+.screen{width:87%;aspect-ratio:1;border-radius:50%;background:var(--screen);color:var(--screen-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);text-align:center;gap:2px}
+.screen .t{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.screen .n{font-family:var(--display);font-weight:700;font-size:2.6rem;color:var(--signal);font-variant-numeric:tabular-nums;line-height:1}
+.screen .s{font-size:.66rem;opacity:.7}
+.horizon{position:absolute;left:-30%;right:-30%;top:50%;height:1px;background:linear-gradient(90deg,transparent,var(--horizon) 25%,var(--horizon) 75%,transparent);opacity:.5}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:36px}
+.step{display:flex;flex-direction:column;gap:10px;min-width:0}
+.step .k{font-family:var(--mono);font-size:.8rem;color:var(--horizon)}
+.step p{margin:0;color:var(--muted)}
+@media (max-width:780px){.steps{grid-template-columns:1fr}}
+
+/* habit */
+.habit{display:grid;grid-template-columns:.8fr 1.2fr;gap:40px;align-items:center}
+.habit p{color:var(--muted);max-width:42ch}
+.streak{display:flex;align-items:baseline;gap:10px;margin:18px 0 6px}
+.streak b{font-family:var(--display);font-size:3.4rem;line-height:1;font-variant-numeric:tabular-nums}
+.habit .panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0}
+/* watch-face heat map: copies the app's "Today" screen. Colours are the app's own and stay fixed in both themes */
+.face{--done:#5cb85c;--skip:#d9534f;--miss:#8a8a8a;--empty:#2a2a2a;
+  width:min(380px,100%);aspect-ratio:1;margin-inline:auto;border-radius:50%;background:#000;border:10px solid var(--bezel);
+  box-shadow:0 18px 40px rgb(10 30 40 / .25);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;font-family:"Roboto","Helvetica Neue",Arial,sans-serif;font-size:clamp(.8rem,3.6vw,1.1rem);line-height:1.25;padding:0 11%}
+.face .day{margin-bottom:6%}
+.face .hrs,.face .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;width:100%}
+.face .hrs span{color:#bdbdbd;grid-column:span 3}
+.face .grid span{aspect-ratio:1;border-radius:3px;background:var(--empty)}
+.face .ok{background:var(--done)!important}.face .sk{background:var(--skip)!important}.face .ms{background:var(--miss)!important}
+.face .sum{margin-top:5%;text-align:center}
+.face .g{color:var(--done)}.face .r{color:var(--skip)}.face .m{color:var(--miss)}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-top:18px;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+@media (max-width:780px){.habit{grid-template-columns:1fr}}
+
+/* try */
+.try{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.try p{color:var(--muted);max-width:46ch}
+.dial{position:relative;width:220px;height:220px}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial circle{fill:none;stroke-width:8}
+.dial .bg{stroke:var(--cell)}.dial .fg{stroke:var(--signal);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.dial .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;padding:30px}
+.dial .num{font-family:var(--display);font-weight:700;font-size:3rem;font-variant-numeric:tabular-nums;line-height:1}
+.dial .msg{font-size:.85rem;color:var(--muted)}
+.rate{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.rate button{font-family:var(--mono);border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+.rate button:hover{border-color:var(--signal)}
+@media (max-width:640px){.try{grid-template-columns:1fr}.dial{margin-inline:auto}}
+
+/* install + faq */
+.install{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.install ul{margin:16px 0 0;padding-left:18px;color:var(--muted)}
+.faq{display:grid;gap:0;margin-top:28px;max-width:760px}
+details{border-top:1px solid var(--line);padding-block:16px}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:1.08rem;list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::after{content:"+";color:var(--horizon);font-family:var(--mono)}
+details[open] summary::after{content:"–"}
+details p{color:var(--muted);margin:10px 0 0;max-width:62ch}
+@media (max-width:780px){.install{grid-template-columns:1fr}}
+</head>
+<body>
+
+footer{padding-block:40px 56px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;color:var(--muted);font-size:.92rem}
+footer .mono{font-family:var(--mono);user-select:all}
+.demo-tag{font-family:var(--mono);font-size:.7rem;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:2px 6px}
+
+@media (prefers-reduced-motion: reduce){.ring{animation:none}.ring:nth-child(2){opacity:.4;transform:scale(1.2)}.dial .fg{transition:none}}
+</style>
+
+<div class="wrap">
+  <nav>
+    <a class="logo" href="#top"><img src="logo.webp" alt="" width="34" height="34">LookFar</a>
+    <div class="links"><a href="#how">How it works</a><a href="#faq">FAQ</a><a class="keep" href="#install">Install</a></div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div>
+      <span class="eyebrow">Connect IQ app · free</span>
+      <h1>Your watch reminds you to <em>look far.</em></h1>
+      <p>During your work hours, LookFar gives a short buzz every 30 minutes. Look away from the screen for 15–20 seconds, then go back to work.</p>
+      <div class="ctas">
+        <a class="btn" href="#install">Get it on Connect IQ</a>
+        <button class="btn ghost" id="tryJump" type="button">Try a break now</button>
+      </div>
+      <p class="note" style="margin-top:14px">Garmin watches · English · no purchases, no account</p>
+    </div>
+    <div class="stage" aria-hidden="true">
+      <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+      <div class="horizon"></div>
+      <div class="watch"><div class="screen"><span class="t">Look far</span><span class="n" id="heroN">18</span><span class="s">seconds</span></div></div>
+    </div>
+  </header>
+</div>
+
+<section id="how"><div class="wrap">
+  <span class="eyebrow">How it works</span>
+  <h2>Three steps, and you don't need your phone.</h2>
+  <div class="steps">
+    <div class="step"><span class="k">01 · set</span><h3>Pick your work hours</h3><p>Reminders come only inside the hours you set. The default interval is 30 minutes, and you can change it.</p></div>
+    <div class="step"><span class="k">02 · buzz</span><h3>Feel the buzz, look away</h3><p>The watch vibrates. Look at something far away for 15–20 seconds while the countdown runs on your wrist.</p></div>
+    <div class="step"><span class="k">03 · check in</span><h3>Say how your eyes feel</h3><p>After the break, rate how tired your eyes feel. It takes one tap.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap habit">
+  <div>
+    <span class="eyebrow">Your day on the wrist</span>
+    <h2>See the habit form.</h2>
+    <p>Open <b>Today</b> on the watch: every break of the work day is a square. Green is done, red is skipped, grey is missed. Below it you see how much you did and your current streak.</p>
+    <p>Nothing to sync, and nothing to sign up for.</p>
+  </div>
+  <figure style="margin:0">
+    <div class="face" role="img" aria-label="Today screen on the watch: 21 breaks done, 3 skipped, 3 missed, 77 percent done, streak 1">
+      <div class="day">&lt; Today</div>
+      <div class="hrs"><span>9</span><span>12</span><span>15</span><span>18</span></div>
+      <div class="grid" id="heat"></div>
+      <div class="sum"><span class="g">21 done</span> <span class="r">3 skip</span> <span class="m">3 miss</span><br>77% done&nbsp;&nbsp; streak 1</div>
+    </div>
+    <div class="legend"><span><i style="background:#5cb85c"></i>done</span><span><i style="background:#d9534f"></i>skipped</span><span><i style="background:#8a8a8a"></i>missed</span><span class="demo-tag">example day</span></div>
+  </figure>
+</div></section>
+
+<section id="try"><div class="wrap try">
+  <div>
+    <span class="eyebrow">Try it here</span>
+    <h2>Take one break right now.</h2>
+    <p>Press start, then look at something at least 6 metres (20 feet) away: a window, a far wall, a tree outside. Come back when the ring closes.</p>
+    <div class="ctas"><button class="btn" id="start" type="button">Start 20-second break</button></div>
+    <div class="rate" id="rate" hidden aria-label="How tired do your eyes feel?">
+      <span class="note" style="width:100%">How tired do your eyes feel?</span>
+      <button type="button">1 · fresh</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5 · very</button>
+    </div>
+  </div>
+  <div class="dial" aria-live="polite">
+    <svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="arc" cx="50" cy="50" r="44" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
+    <div class="mid"><span class="num" id="num">20</span><span class="msg" id="msg">seconds, looking far</span></div>
+  </div>
+</div></section>
+
+<section id="install"><div class="wrap install">
+  <div>
+    <span class="eyebrow">Install</span>
+    <h2>Coming to the Connect IQ Store.</h2>
+    <p style="color:var(--muted)">LookFar is in review at Garmin. When it's live, this button will open the store page. You can install it from the Connect IQ app on your phone or from Garmin Express.</p>
+    <div class="ctas" style="margin-top:20px"><a class="btn" href="#install" aria-disabled="true">Connect IQ Store · soon</a></div>
+  </div>
+  <div>
+    <h3>Want to try it first?</h3>
+    <p style="color:var(--muted)">I'm looking for people who work at a screen to use it for a week and tell me what got in the way. Write to me and I'll reply myself:</p>
+    <p class="mono note" style="font-size:.95rem;user-select:all">lookfar@aura88.tech</p>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <span class="eyebrow">Questions</span>
+  <h2>Before you install</h2>
+  <div class="faq">
+    <details><summary>Will it buzz during my meetings?</summary><p>It buzzes only inside the work hours you set. In this version it doesn't detect meetings. If a buzz comes at a bad moment, cancel the break. The Today screen shows it as skipped, not missed.</p></details>
+    <details><summary>Which watches does it support?</summary><p>The main current Garmin models that support Connect IQ apps. The store page will have the full list.</p></details>
+    <details><summary>Does it use my heart rate or other sensors?</summary><p>No. LookFar uses only a timer and vibration. It doesn't depend on your movement, sleep or workouts.</p></details>
+    <details><summary>Is it free?</summary><p>Yes, the app is free. It has no purchases, ads or account.</p></details>
+    <details><summary>Is this a medical app?</summary><p>No. LookFar is a break reminder. It doesn't diagnose or treat anything. If something about your eyes worries you, see an eye care professional.</p></details>
+    <details><summary>Where is my data?</summary><p>Only your break history (done, skipped, missed) and your settings, and they stay on your watch. Nothing is sent to us. Details are on the <a href="privacy.html">privacy page</a>.</p></details>
+  </div>
+</div></section>
+
+<div class="wrap"><footer>
+  <span>LookFar. I made it for myself, because I work at a screen all day.</span>
+  <span><a href="privacy.html">Privacy</a> · <span class="mono">lookfar@aura88.tech</span></span>
+</footer></div>
+
+<script>
+(function(){
+  // hero countdown
+  let h=18;const hn=document.getElementById('heroN');setInterval(()=>{h=h<=0?18:h-1;hn.textContent=h},1000);
+
+  // example day, same as the app screenshot: 4 rows × 12 hourly columns (9–20); o done, s skip, m miss, . not yet
+  const rows=['oomoooo.....','oooomos.....','moosooo.....','osoooo......'];
+  const heat=document.getElementById('heat');const cls={o:'ok',s:'sk',m:'ms','.':''};
+  rows.forEach(r=>[...r].forEach(ch=>{const e=document.createElement('span');e.className=cls[ch];heat.appendChild(e);}));
+
+  // try-a-break
+  const start=document.getElementById('start'),num=document.getElementById('num'),msg=document.getElementById('msg'),arc=document.getElementById('arc'),rate=document.getElementById('rate');
+  const C=276.5;let t=null;
+  function run(){
+    clearInterval(t);rate.hidden=true;let n=20;num.textContent=n;msg.textContent='look at something far away';arc.style.strokeDashoffset=0;start.textContent='Restart';
+    t=setInterval(()=>{n--;num.textContent=Math.max(n,0);arc.style.strokeDashoffset=C*(1-n/20);
+      if(n<=0){clearInterval(t);num.textContent='✓';msg.textContent='done. back to work';rate.hidden=false;start.textContent='Another break';}},1000);
+  }
+  start.addEventListener('click',run);
+  document.getElementById('tryJump').addEventListener('click',()=>{document.getElementById('try').scrollIntoView({behavior:'smooth'});run();});
+  rate.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{rate.hidden=true;msg.textContent='thanks, noted';}));
+})();
+</script>
+</body>
+</html>
